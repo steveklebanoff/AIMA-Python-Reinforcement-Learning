@@ -49,14 +49,14 @@ class PassiveADPAgent(object):
         self.outcome_freq = { }
 
     def create_policy_and_states(self, policy):
-        # Create policy and states
-        policy.reverse() ## because we want row 0 on bottom, not on top
-        self.rows=len(policy)
-        self.cols=len(policy[0])
         self.policy = {}
         self.states = set()
-        for x in range(self.cols):
-            for y in range(self.rows):
+        
+        ## Reverse because we want row 0 on bottom, not on top
+        policy.reverse() 
+        rows, cols = len(policy), len(policy[0])
+        for x in range(cols):
+            for y in range(rows):
                 self.policy[x, y] = policy[y][x]
                 
                 # States are all non-none values
@@ -81,6 +81,7 @@ class PassiveADPAgent(object):
         
         # If we're at a terminal we don't want a next move
         if current_state in self.mdp.terminals:
+            logging.debug('Reached terminal state %s' % str(current_state))
             return False
         
         # Return the next action that the policy dictates
