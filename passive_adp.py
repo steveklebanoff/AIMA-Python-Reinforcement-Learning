@@ -38,27 +38,26 @@ Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1],
 class PassiveADPAgent(object):
 
     def __init__(self, action_mdp, policy):
-        self.create_policy_and_states(policy)
         self.mdp = MDP(init=(0, 0),
                        actlist=[(1,0), (0, 1), (-1, 0), (0, -1)],
                        terminals=action_mdp.terminals,
                        gamma = 0.9)
         self.action_mdp = action_mdp
-        self.utility = { }
-        self.sa_freq = { }
-        self.outcome_freq = { }
+        self.utility, self.sa_freq, self.outcome_freq = { }, { }, { }
+        self.previous_state, self.previous_reward = None, None
+        self.create_policy_and_states(policy)
 
     def create_policy_and_states(self, policy):
         self.policy = {}
         self.states = set()
-        
+
         ## Reverse because we want row 0 on bottom, not on top
         policy.reverse() 
         rows, cols = len(policy), len(policy[0])
         for x in range(cols):
             for y in range(rows):
                 self.policy[x, y] = policy[y][x]
-                
+
                 # States are all non-none values
                 if policy[y][x] is not None:
                     self.states.add((x, y))
@@ -78,12 +77,12 @@ class PassiveADPAgent(object):
         #     dict with key being new state, value being another dict with keys being
         #     state, action pairs and values being that percentage
         # previous state, previous action = s,a
-        
+
         # If we're at a terminal we don't want a next move
         if current_state in self.mdp.terminals:
             logging.debug('Reached terminal state %s' % str(current_state))
             return False
-        
+
         # Return the next action that the policy dictates
         return self.policy[current_state]
 
@@ -95,22 +94,22 @@ class PassiveADPAgent(object):
         # Keep going until we get to a terminal state
         while True:
             logging.debug('--------------------------')
-            
+
             # Get reward for current state
             current_reward = self.action_mdp.R(current_state)
-            
+
             # Calculate move from current state
             next_action = self.next_action(current_state, current_reward)
-            
+
             logging.debug('Current State: %s ' % str(current_state))
             logging.debug('Current Reward: %s ' % current_reward)
             logging.debug('Next action: %s' % next_action)
-            
+
             if next_action == False:
                 # End because next_action told us to
                 logging.debug('Next_action returned false, stopping')
                 break
-            
+
             # Get new current_state
             current_state = self.action_mdp.simulate_move(current_state, char_to_tuple(next_action))
 
