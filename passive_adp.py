@@ -48,22 +48,28 @@ Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1],
 class MDP(MDP):
     
     def __init__(self, init, actlist, terminals, gamma=.9):
-        super(MDP, self).__init__(self, init, actlist, terminals, gamma)
+        super(MDP, self).__init__(init, actlist, terminals, gamma)
         self.model = { }
     
     def T(self, state, action):
-        if (state in self.model) and (action in self.model[state]):
-            return self.model[state][action]
-        else:
-            return None
+        ''' returns a list of tuples with probabilities for states '''
+        try:
+            possible_results_and_probabilities = self.model[state][action]
+        except KeyError:
+            raise Exception('Dont have model entry for state %s, action %s' % (state, action))
+        
+        l = []
+        for result_state, probability in possible_results_and_probabilities.items():
+            l.append((probability, result_state))
+        return l
     
-    def T_add(self, state, action, probability):
+    def T_add(self, state, action, result_state, probability):
         if (state in self.model) and (action in self.model[state]):
-            self.model[state][action] = probability
+            self.model[state][action][result_state] = probability
         elif (state in self.model):
-            self.model[state][action] = probability
+            self.model[state][action] = { result_state : probability }
         else:
-            self.model[state] = {action : probability}
+            self.model[state] = {action : { result_state : probability} }
 
 
 class PassiveADPAgent(object):
@@ -86,7 +92,7 @@ class PassiveADPAgent(object):
         for state in self.states:
             self.sa_freq[state] = { }
             for action in self.mdp.actlist:
-                self.sa_freq[state][action] = 0
+                self.sa_freq[state][action] = 0.0
         
     def create_policy_and_states(self, policy):
         self.policy = {}
@@ -109,6 +115,9 @@ class PassiveADPAgent(object):
 
     def add_state_action_pair_frequency(self, state, action):
         self.sa_freq[state][action] += 1
+    
+    def get_state_action_pair_frequency(self, state, action):
+        return self.sa_freq[state][action]
         
     def add_outcome_frequency(self, state, action, outcome):
         # We haven't seen this state yet
@@ -129,6 +138,20 @@ class PassiveADPAgent(object):
         # We've seen the state, action, and outcome, add 1
         self.outcome_freq[state][action][outcome] += 1
     
+    def get_outcome_frequency(self, state, action, outcome):
+        try:
+            return self.outcome_freq[state][action][outcome]
+        except KeyError:
+            return 0
+
+    def print_outcome_frequency(self):
+        for state in agent.outcome_freq:
+            for action in agent.outcome_freq[state]:
+                for result_state, result_frequency in agent.outcome_freq[state][action].items():
+                    print 'state', state, '\t action', action, \
+                    '\t result state',result_state, '\t frequency', result_frequency
+
+
     def get_move_from_policy(self, state_x, state_y):
         return self.policy[state_x][state_y]
         
@@ -161,6 +184,18 @@ class PassiveADPAgent(object):
             # increment Nsa[s,a] and Ns'|sa[s', s, a]
             self.add_state_action_pair_frequency(self.previous_state, self.previous_action)
             self.add_outcome_frequency(self.previous_state, self.previous_action, current_state)
+            
+            # for each t such that Ns'|sa[t,s,a] is nonzero:
+            for state in agent.outcome_freq:
+                for action in agent.outcome_freq[state]:
+                    for result_state, result_frequency in agent.outcome_freq[state][action].items():
+                        if result_frequency > 0:
+                            # P (t, s, a) <- Ns'|sa[t, s, a] / Nsa[s,a]
+                            # Update the model to be:
+                            # ((freq of this action happening with this state action pair)
+                            # / (total freq of this state action pair combo))
+                            probability = result_frequency / self.get_state_action_pair_frequency(state, action)
+                            self.mdp.T_add(state, action, result_state, probability)
 
         # if s'.TERMINAL?
         # If we're at a terminal we don't want a next move
