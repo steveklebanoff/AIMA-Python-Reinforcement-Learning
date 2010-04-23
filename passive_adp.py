@@ -44,6 +44,28 @@ Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1],
                      [-0.04, -0.04, -0.04, -0.04]], 
                     terminals=[(3, 2), (3, 1)])
 
+# Extending MDP class to use a dictionary transistion model
+class MDP(MDP):
+    
+    def __init__(self, init, actlist, terminals, gamma=.9):
+        super(MDP, self).__init__(self, init, actlist, terminals, gamma)
+        self.model = { }
+    
+    def T(self, state, action):
+        if (state in self.model) and (action in self.model[state]):
+            return self.model[state][action]
+        else:
+            return None
+    
+    def T_add(self, state, action, probability):
+        if (state in self.model) and (action in self.model[state]):
+            self.model[state][action] = probability
+        elif (state in self.model):
+            self.model[state][action] = probability
+        else:
+            self.model[state] = {action : probability}
+
+
 class PassiveADPAgent(object):
 
     def __init__(self, action_mdp, policy):
