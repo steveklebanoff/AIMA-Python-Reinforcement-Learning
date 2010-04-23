@@ -2,11 +2,35 @@ import logging
 
 from aima.mdp import GridMDP, MDP
 from aima.utils import turn_left, turn_right
+from optparse import OptionParser
 from random import randint
 from time import time
 
-logging.basicConfig(level=logging.DEBUG,
+
+parser = OptionParser()
+parser.add_option("-t", "--times", dest="times", type="int", default = 100,
+                  help="times to run")
+parser.add_option("-d", "--debug", action='store_true', dest="debug",
+                  default=False, help="debug mode?")
+(options, args) = parser.parse_args()
+
+if options.debug:
+    level = logging.DEBUG
+else:
+    level = logging.CRITICAL
+logging.basicConfig(level=level,
                     format='%(levelname)s: %(message)s')
+
+def policy_evaluation(pi, U, mdp, k=20):
+    """Return an updated utility mapping U from each state in the MDP to its 
+    utility, using an approximation (modified policy iteration)."""
+    R, T, gamma = mdp.R, mdp.T, mdp.gamma
+    for i in range(k):
+        for s in mdp.states:
+            # Only calculate if we have transistions for this state and action
+            # if len(T(s, pi[s])) > 0:
+            U[s] = R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])
+    return U
 
 class GridMDP(GridMDP):
 
@@ -50,13 +74,21 @@ class MDP(MDP):
     def __init__(self, init, actlist, terminals, gamma=.9):
         super(MDP, self).__init__(init, actlist, terminals, gamma)
         self.model = { }
-    
+
+    def R(self, state): 
+        "Return a numeric reward for this state."
+        if state in self.reward:
+            return self.reward[state]
+        else:
+            return 0
+            #raise Exception('tried to get reward of state we dont have yet %s' % str(state))
+
     def T(self, state, action):
         ''' returns a list of tuples with probabilities for states '''
         try:
             possible_results_and_probabilities = self.model[state][action]
         except KeyError:
-            raise Exception('Dont have model entry for state %s, action %s' % (state, action))
+            return []
         
         l = []
         for result_state, probability in possible_results_and_probabilities.items():
@@ -70,7 +102,6 @@ class MDP(MDP):
             self.model[state][action] = { result_state : probability }
         else:
             self.model[state] = {action : { result_state : probability} }
-
 
 class PassiveADPAgent(object):
 
@@ -89,14 +120,14 @@ class PassiveADPAgent(object):
     def create_empty_sa_freq(self):
         # Creats state action frequences with inital values of 0
         self.sa_freq = { }
-        for state in self.states:
+        for state in self.mdp.states:
             self.sa_freq[state] = { }
             for action in self.mdp.actlist:
                 self.sa_freq[state][action] = 0.0
         
     def create_policy_and_states(self, policy):
         self.policy = {}
-        self.states = set()
+        self.mdp.states = set()
 
         ## Reverse because we want row 0 on bottom, not on top
         policy.reverse() 
@@ -111,7 +142,7 @@ class PassiveADPAgent(object):
 
                 # States are all non-none values
                 if policy[y][x] is not None:
-                    self.states.add((x, y))
+                    self.mdp.states.add((x, y))
 
     def add_state_action_pair_frequency(self, state, action):
         self.sa_freq[state][action] += 1
@@ -196,12 +227,15 @@ class PassiveADPAgent(object):
                             # / (total freq of this state action pair combo))
                             probability = result_frequency / self.get_state_action_pair_frequency(state, action)
                             self.mdp.T_add(state, action, result_state, probability)
+        
+        self.utility = policy_evaluation(self.policy, self.utility, self.mdp)
 
         # if s'.TERMINAL?
         # If we're at a terminal we don't want a next move
         if current_state in self.mdp.terminals:
             logging.debug('Reached terminal state %s' % str(current_state))
             # s,a <- null
+            
             return False
         else:
             # s,a <- s', policy[s']
@@ -244,7 +278,7 @@ policy = [['>', '>', '>', '.'],
 
 agent = PassiveADPAgent(Fig[17,1], policy)
 
-trials = 1
+trials = options.times
 # Execute a bunch of trials
 for i in range (0,trials):
     agent.execute_trial()
