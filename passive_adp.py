@@ -29,6 +29,7 @@ def policy_evaluation(pi, U, mdp, k=20):
         for s in mdp.states:
             # Only calculate if we have transistions for this state and action
             # if len(T(s, pi[s])) > 0:
+            logging.debug('Calculating utility for %s ' % s)
             U[s] = R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])
     return U
 
