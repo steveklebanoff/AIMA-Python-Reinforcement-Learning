@@ -12,16 +12,28 @@ parser.add_option("-t", "--times", dest="times", type="int", default = 100,
                   help="times to run")
 parser.add_option("-d", "--debug", action='store_true', dest="debug",
                   default=False, help="debug mode?")
+parser.add_option("-i", "--info", action='store_true', dest="info",
+                  default=False, help="info mode?")
+parser.add_option("-f", "--file", dest="log_file",
+                  default=False, help="file to log to")
 (options, args) = parser.parse_args()
 
 if options.debug:
     level = logging.DEBUG
+elif options.info:
+    level = logging.INFO
 else:
     level = logging.CRITICAL
-logging.basicConfig(level=level,
-                    format='%(levelname)s: %(message)s')
 
-def policy_evaluation(pi, U, mdp, k=20):
+if options.log_file:
+    logging.basicConfig(level=level,
+                        filename=options.log_file,
+                        filemode='w')
+else:
+    logging.basicConfig(level=level,
+                        format='%(levelname)s: %(message)s')
+
+def policy_evaluation(pi, U, mdp, k=5):
     """Return an updated utility mapping U from each state in the MDP to its 
     utility, using an approximation (modified policy iteration)."""
     R, T, gamma = mdp.R, mdp.T, mdp.gamma
@@ -29,7 +41,12 @@ def policy_evaluation(pi, U, mdp, k=20):
         for s in mdp.states:
             # Only calculate if we have transistions for this state and action
             # if len(T(s, pi[s])) > 0:
-            logging.debug('Calculating utility for %s ' % s)
+            if T(s, pi[s]) != []:
+                logging.debug('Calculating utility for %s' % str(s))
+                for (p, s1) in T(s, pi[s]):
+                    #logging.info(str(U))
+                    logging.debug('Probablity of %i for %s | Util: %f' % (p, s, U[s]))
+                    logging.debug('Total: %f' % (R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])))
             U[s] = R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])
     return U
 
@@ -234,9 +251,9 @@ class PassiveADPAgent(object):
         # if s'.TERMINAL?
         # If we're at a terminal we don't want a next move
         if current_state in self.mdp.terminals:
-            logging.debug('Reached terminal state %s' % str(current_state))
+            logging.info('Reached terminal state %s' % str(current_state))
             # s,a <- null
-            
+            self.previous_state, self.previous_action = None, None
             return False
         else:
             # s,a <- s', policy[s']
@@ -252,7 +269,7 @@ class PassiveADPAgent(object):
         
         # Keep going until we get to a terminal state
         while True:
-            logging.debug('--------------------------')
+            logging.info('--------------------------')
 
             # Get reward for current state
             current_reward = self.action_mdp.R(current_state)
@@ -260,13 +277,13 @@ class PassiveADPAgent(object):
             # Calculate move from current state
             next_action = self.next_action(current_state, current_reward)
 
-            logging.debug('Current State: %s ' % str(current_state))
-            logging.debug('Current Reward: %s ' % current_reward)
-            logging.debug('Next action: %s' % self.action_mdp.tuple_to_char(next_action))
+            logging.info('Current State: %s ' % str(current_state))
+            logging.info('Current Reward: %s ' % current_reward)
+            logging.info('Next action: %s' % self.action_mdp.tuple_to_char(next_action))
 
             if next_action == False:
                 # End because next_action told us to
-                logging.debug('Next_action returned false, stopping')
+                logging.info('Next_action returned false, stopping')
                 break
 
             # Get new current_state
