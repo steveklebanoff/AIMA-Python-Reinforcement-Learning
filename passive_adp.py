@@ -25,13 +25,15 @@ elif options.info:
 else:
     level = logging.CRITICAL
 
+format = '%(levelname)s: %(message)s'
 if options.log_file:
     logging.basicConfig(level=level,
                         filename=options.log_file,
-                        filemode='w')
+                        filemode='w',
+                        format=format)
 else:
     logging.basicConfig(level=level,
-                        format='%(levelname)s: %(message)s')
+                        format=format)
 
 def policy_evaluation(pi, U, mdp, k=5):
     """Return an updated utility mapping U from each state in the MDP to its 
@@ -40,13 +42,14 @@ def policy_evaluation(pi, U, mdp, k=5):
     for i in range(k):
         for s in mdp.states:
             # Only calculate if we have transistions for this state and action
-            # if len(T(s, pi[s])) > 0:
-            if T(s, pi[s]) != []:
-                logging.debug('Calculating utility for %s' % str(s))
-                for (p, s1) in T(s, pi[s]):
-                    #logging.info(str(U))
-                    logging.debug('Probablity of %i for %s | Util: %f' % (p, s, U[s]))
-                    logging.debug('Total: %f' % (R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])))
+            #if T(s, pi[s]) != []:
+            logging.debug('Calculating utility for %s' % str(s))
+            logging.debug("Total \t Reward: %f" % (R(s)))
+            logging.debug("Total \t Gamma: %f" % (gamma))
+            for (p, s1) in T(s, pi[s]):
+                #logging.info(str(U))
+                logging.debug('Probablity of %f for %s | Util: %f' % (p, s, U[s]))
+            logging.debug('Total: %f' % (R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])))
             U[s] = R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])
     return U
 
