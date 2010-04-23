@@ -6,9 +6,11 @@ as a dictionary of {state:action} pairs, and a Utility function as a
 dictionary of {state:number} pairs.  We then define the value_iteration 
 and policy_iteration algorithms."""
 
+import logging
+
 from utils import *
 
-class MDP:
+class MDP(object):
     """A Markov Decision Process, defined by an initial state, transition model,
     and reward function. We also keep track of a gamma value, for use by 
     algorithms. The transition model is represented somewhat differently from 
@@ -51,7 +53,10 @@ class GridMDP(MDP):
         update(self, grid=grid, rows=len(grid), cols=len(grid[0]))
         for x in range(self.cols):
             for y in range(self.rows):
+                # Reward is same as MDP inital values
                 self.reward[x, y] = grid[y][x]
+                
+                # States are all non-none values
                 if grid[y][x] is not None:
                     self.states.add((x, y))
 
