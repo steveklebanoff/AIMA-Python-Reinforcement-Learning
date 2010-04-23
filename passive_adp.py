@@ -1,6 +1,6 @@
 import logging
 
-from aima.mdp import GridMDP, MDP
+from aima.mdp import GridMDP, MDP, value_iteration
 from aima.utils import turn_left, turn_right
 from optparse import OptionParser
 from random import randint
@@ -35,7 +35,7 @@ else:
     logging.basicConfig(level=level,
                         format=format)
 
-def policy_evaluation(pi, U, mdp, k=5):
+def policy_evaluation(pi, U, mdp, k=20):
     """Return an updated utility mapping U from each state in the MDP to its 
     utility, using an approximation (modified policy iteration)."""
     R, T, gamma = mdp.R, mdp.T, mdp.gamma
@@ -48,9 +48,9 @@ def policy_evaluation(pi, U, mdp, k=5):
             logging.debug("Total \t Gamma: %f" % (gamma))
             for (p, s1) in T(s, pi[s]):
                 #logging.info(str(U))
-                logging.debug('Probablity of %f for %s | Util: %f' % (p, s, U[s]))
+                logging.debug('Probablity of %f for %s | Util: %f' % (p, s1, U[s1]))
             logging.debug('Total: %f' % (R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])))
-            U[s] = R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])
+            U[s] = R(s) + gamma * sum([p * U[s1] for (p, s1) in T(s, pi[s])])
     return U
 
 class GridMDP(GridMDP):
@@ -84,8 +84,8 @@ class GridMDP(GridMDP):
             return self.go(state, action)
 
 Fig = {}
-Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1],
-                     [-0.04, None,  -0.04, -1],
+Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1.0],
+                     [-0.04, None,  -0.04, -1.0],
                      [-0.04, -0.04, -0.04, -0.04]], 
                     terminals=[(3, 2), (3, 1)])
 
