@@ -6,50 +6,21 @@ from optparse import OptionParser
 from random import randint
 from time import time
 
-
-parser = OptionParser()
-parser.add_option("-t", "--times", dest="times", type="int", default = 100,
-                  help="times to run")
-parser.add_option("-d", "--debug", action='store_true', dest="debug",
-                  default=False, help="debug mode?")
-parser.add_option("-i", "--info", action='store_true', dest="info",
-                  default=False, help="info mode?")
-parser.add_option("-f", "--file", dest="log_file",
-                  default=False, help="file to log to")
-(options, args) = parser.parse_args()
-
-if options.debug:
-    level = logging.DEBUG
-elif options.info:
-    level = logging.INFO
-else:
-    level = logging.CRITICAL
-
-format = '%(levelname)s: %(message)s'
-if options.log_file:
-    logging.basicConfig(level=level,
-                        filename=options.log_file,
-                        filemode='w',
-                        format=format)
-else:
-    logging.basicConfig(level=level,
-                        format=format)
-
 def policy_evaluation(pi, U, mdp, k=20):
-    """Return an updated utility mapping U from each state in the MDP to its 
-    utility, using an approximation (modified policy iteration)."""
+    """ Updated version of aima.mdp.policy_evaluation that includes debugging
+    information and fixes big """
     R, T, gamma = mdp.R, mdp.T, mdp.gamma
     for i in range(k):
+        # Do this k times
         for s in mdp.states:
-            # Only calculate if we have transistions for this state and action
-            #if T(s, pi[s]) != []:
+            # Debug info
             logging.debug('Calculating utility for %s' % str(s))
             logging.debug("Total \t Reward: %f" % (R(s)))
             logging.debug("Total \t Gamma: %f" % (gamma))
             for (p, s1) in T(s, pi[s]):
-                #logging.info(str(U))
                 logging.debug('Probablity of %f for %s | Util: %f' % (p, s1, U[s1]))
             logging.debug('Total: %f' % (R(s) + gamma * sum([p * U[s] for (p, s1) in T(s, pi[s])])))
+            
             U[s] = R(s) + gamma * sum([p * U[s1] for (p, s1) in T(s, pi[s])])
     return U
 
@@ -83,14 +54,9 @@ class GridMDP(GridMDP):
         else:
             return self.go(state, action)
 
-Fig = {}
-Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1.0],
-                     [-0.04, None,  -0.04, -1.0],
-                     [-0.04, -0.04, -0.04, -0.04]], 
-                    terminals=[(3, 2), (3, 1)])
 
-# Extending MDP class to use a dictionary transistion model
 class MDP(MDP):
+    """ Extends MDP class to use a dictionary transistion model """
     
     def __init__(self, init, actlist, terminals, gamma=.9):
         super(MDP, self).__init__(init, actlist, terminals, gamma)
@@ -215,7 +181,7 @@ class PassiveADPAgent(object):
         #          MDP gamma in initializer
         # utility = dictionary u[(0,0)] = 0.57 etc
         # state action frequencies = sa_freq (dict) initially empty
-        # outcome frequenes given state outcome and state-action pairs = outcome_freq  initially empty
+        # outcome frequencies given state outcome and state-action pairs = outcome_freq  initially empty
         #     dict with key being new state, value being another dict with keys being
         #     state, action pairs and values being that percentage
         # previous state, previous action = s,a
@@ -292,17 +258,73 @@ class PassiveADPAgent(object):
             # Get new current_state
             current_state = self.action_mdp.simulate_move(current_state, next_action)
 
-# Setup values
-policy = [['>', '>', '>', '.'],
-          ['^', None, '^', '.'],
-          ['^', '<', '<', '<']]
-
-agent = PassiveADPAgent(Fig[17,1], policy)
-
-trials = options.times
-# Execute a bunch of trials
-for i in range (0,trials):
-    agent.execute_trial()
-
-logging.info('Executed %i trials:' % (trials))
-logging.info('Utilities: %s' % (agent.utility))
+if __name__ == '__main__':
+    ''' Parses options from command line, creates Fig 17,1, runs the passive
+    adp agent on it certain amount of times, outputs info and utilities '''
+    
+    # Setup file options
+    parser = OptionParser()
+    parser.add_option("-t", "--times", dest="times", type="int", default = 100,
+                      help="times to run")
+    parser.add_option("-d", "--debug", action='store_true', dest="debug",
+                      default=False, help="debug mode?")
+    parser.add_option("-i", "--info", action='store_true', dest="info",
+                      default=False, help="info mode?")
+    parser.add_option("-f", "--file", dest="log_file",
+                      default=False, help="file to log to")
+    (options, args) = parser.parse_args()
+    
+    if options.debug:
+        level = logging.DEBUG
+    elif options.info:
+        level = logging.INFO
+    else:
+        level = logging.CRITICAL
+    
+    format = '%(levelname)s: %(message)s'
+    if options.log_file:
+        logging.basicConfig(level=level,
+                            filename=options.log_file,
+                            filemode='w',
+                            format=format)
+    else:
+        logging.basicConfig(level=level,
+                            format=format)
+    
+    # Set up grid MDP to act on
+    Fig = {}
+    Fig[17,1] = GridMDP([[-0.04, -0.04, -0.04, +1.0],
+                         [-0.04, None, -0.04, -1.0],
+                         [-0.04, -0.04, -0.04, -0.04]],
+                        terminals=[(3, 2), (3, 1)])
+    
+    # Setup values
+    policy = [['>', '>', '>', '.'],
+              ['^', None, '^', '.'],
+              ['^', '<', '<', '<']]
+    
+    # Create agent
+    agent = PassiveADPAgent(Fig[17,1], policy)
+    
+    # Start timing
+    time_start = time()
+    logging.info('Start at %s' % time_start)
+    
+    # Execute a bunch of trials
+    trials = options.times
+    for i in range (0,trials):
+        agent.execute_trial()
+    
+    # End timing
+    time_end = time()
+    logging.info('End at %s' % time_end)
+    
+    seconds_elapsed = time_end - time_start
+    minutes_elapsed = seconds_elapsed / 60.0
+    
+    # Print and log final results
+    final_results = (('Took %d seconds, which is %d minutes' % (seconds_elapsed, minutes_elapsed)),\
+        ('Executed %i trials' % (trials)), ('Utilities: %s' % (agent.utility)))
+    for result in final_results:
+        logging.info(result)
+        print result
