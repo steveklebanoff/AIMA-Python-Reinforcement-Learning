@@ -8,7 +8,7 @@ from time import time
 
 def policy_evaluation(pi, U, mdp, k=20):
     """ Updated version of aima.mdp.policy_evaluation that includes debugging
-    information and fixes big """
+    information and fixes bug """
     R, T, gamma = mdp.R, mdp.T, mdp.gamma
     for i in range(k):
         # Do this k times
@@ -63,15 +63,18 @@ class MDP(MDP):
         self.model = { }
 
     def R(self, state): 
-        "Return a numeric reward for this state."
+        " Return a numeric reward for this state. "
         if state in self.reward:
             return self.reward[state]
         else:
+            # TODO: this should really return zero? or return False beause we
+            # don't know.  Returns 0 for now as it makes the value iteration
+            # function work
             return 0
             #raise Exception('tried to get reward of state we dont have yet %s' % str(state))
 
     def T(self, state, action):
-        ''' returns a list of tuples with probabilities for states '''
+        " Returns a list of tuples with probabilities for states "
         try:
             possible_results_and_probabilities = self.model[state][action]
         except KeyError:
@@ -83,6 +86,7 @@ class MDP(MDP):
         return l
     
     def T_add(self, state, action, result_state, probability):
+        " Adds a value to the transistion model "
         if (state in self.model) and (action in self.model[state]):
             self.model[state][action][result_state] = probability
         elif (state in self.model):
@@ -105,7 +109,7 @@ class PassiveADPAgent(object):
         self.create_empty_sa_freq()
 
     def create_empty_sa_freq(self):
-        # Creats state action frequences with inital values of 0
+        " Creates state action frequences with inital values of 0 "
         self.sa_freq = { }
         for state in self.mdp.states:
             self.sa_freq[state] = { }
@@ -113,6 +117,7 @@ class PassiveADPAgent(object):
                 self.sa_freq[state][action] = 0.0
         
     def create_policy_and_states(self, policy):
+        " Sets the initial policy, and also sets the mdp's states "
         self.policy = {}
         self.mdp.states = set()
 
@@ -179,7 +184,7 @@ class PassiveADPAgent(object):
         #          MDP.T  - transistion model (initially empty),
         #          MDP.reward - reward
         #          MDP gamma in initializer
-        # utility = dictionary u[(0,0)] = 0.57 etc
+        # utility = dictionary [(0,0)] = 0.57 etc
         # state action frequencies = sa_freq (dict) initially empty
         # outcome frequencies given state outcome and state-action pairs = outcome_freq  initially empty
         #     dict with key being new state, value being another dict with keys being
